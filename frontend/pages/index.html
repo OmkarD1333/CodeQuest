@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CodeQuest — Login or register to start your gamified coding adventure.">
+    <title>Login - CodeQuest</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        .hidden { display: none; }
+        .message { margin-top: 1rem; font-weight: 500; min-height: 1.5em; }
+    </style>
+</head>
+<body>
+<div class="container login-container">
+    <div class="form-container">
+        <div class="form-box" id="loginBox">
+            <h1>CodeQuest 🚀</h1>
+            <p>Login to continue your adventure.</p>
+            <form id="loginForm">
+                <div class="input-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" name="email" required>
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" name="password" required>
+                </div>
+                <button type="submit" class="btn">Login &amp; Start Quest</button>
+                <p class="form-switch">Don't have an account? <a href="#" id="showRegister">Register here</a></p>
+            </form>
+        </div>
+
+        <div class="form-box hidden" id="registerBox">
+            <h1>Create Your Account</h1>
+            <p>Your epic journey into code begins here.</p>
+            <form id="registerForm">
+                <div class="input-group">
+                    <label for="reg-username">Username</label>
+                    <input type="text" id="reg-username" name="username" required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-email">Email</label>
+                    <input type="email" id="reg-email" name="email" required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-password">Password</label>
+                    <input type="password" id="reg-password" name="password" required>
+                </div>
+                <button type="submit" class="btn">Register</button>
+                <p class="form-switch">Already have an account? <a href="#" id="showLogin">Login here</a></p>
+            </form>
+        </div>
+        <p id="message" class="message"></p>
+    </div>
+</div>
+
+<script src="../js/utils.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const loginBox = document.getElementById('loginBox');
+        const registerBox = document.getElementById('registerBox');
+        const showRegister = document.getElementById('showRegister');
+        const showLogin = document.getElementById('showLogin');
+        const messageEl = document.getElementById('message');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+
+        showRegister.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginBox.classList.add('hidden');
+            registerBox.classList.remove('hidden');
+            messageEl.textContent = '';
+        });
+
+        showLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerBox.classList.add('hidden');
+            loginBox.classList.remove('hidden');
+            messageEl.textContent = '';
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageEl.textContent = 'Registering...';
+            const formData = new FormData(registerForm);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch(`${API_BASE}/register`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data),
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Registration failed');
+                messageEl.textContent = 'Registration successful! Please login.';
+                messageEl.style.color = '#4caf50';
+                registerForm.reset();
+                setTimeout(() => showLogin.click(), 1500);
+            } catch (error) {
+                messageEl.textContent = `Error: ${error.message}`;
+                messageEl.style.color = '#f44336';
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageEl.textContent = 'Logging in...';
+            const formData = new FormData(loginForm);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data),
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Login failed');
+
+                messageEl.textContent = result.message;
+                messageEl.style.color = '#4caf50';
+                localStorage.setItem('codeQuestUser', JSON.stringify(result.user));
+                setTimeout(() => { window.location.assign('/pages/home.html'); }, 500);
+            } catch (error) {
+                messageEl.textContent = `Error: ${error.message}`;
+                messageEl.style.color = '#f44336';
+            }
+        });
+    });
+</script>
+</body>
+</html>

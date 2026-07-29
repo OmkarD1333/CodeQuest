@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CodeQuest — Your personal learning roadmap for your chosen programming language.">
+    <title>Roadmap - CodeQuest</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="page-header">
+    <a href="home.html" class="btn btn-back">← Back to Languages</a>
+    <div class="top-nav-buttons">
+        <button id="logout-btn" class="btn btn-logout">Logout</button>
+    </div>
+</div>
+
+<div class="container">
+    <h1 id="roadmap-title">Loading Roadmap...</h1>
+    <div id="roadmap-container" class="roadmap-container"></div>
+</div>
+
+<script src="../js/utils.js"></script>
+<script src="../js/lessons.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const user = AUTH_GUARD();
+        if (!user) return;
+
+        bindLogoutButton();
+
+        const params = new URLSearchParams(window.location.search);
+        const language = params.get('lang');
+
+        if (!language || !MASTER_CONTENT[language]) {
+            document.getElementById('roadmap-title').textContent = 'Invalid or no language selected!';
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/progress?email=${user.email}`);
+            if (!response.ok) throw new Error('Could not fetch progress.');
+            const progressData = await response.json();
+            const userLevel = progressData[language] ? progressData[language].current_level : 1;
+            renderRoadmap(language, userLevel);
+        } catch (error) {
+            console.error("Error fetching user progress:", error);
+            // Fall back to level 1 if progress fetch fails
+            renderRoadmap(language, 1);
+        }
+    });
+
+    function renderRoadmap(language, userLevel) {
+        const titleEl = document.getElementById('roadmap-title');
+        const container = document.getElementById('roadmap-container');
+
+        let formattedLanguage = language.charAt(0).toUpperCase() + language.slice(1);
+        if (language === 'mysql') formattedLanguage = 'MySQL';
+
+        titleEl.textContent = `Your ${formattedLanguage} Roadmap`;
+        container.innerHTML = '';
+
+        const levels = Object.values(MASTER_CONTENT[language]);
+
+        levels.forEach((level, index) => {
+            const levelNumber = index + 1;
+            let nodeClass = 'locked';
+            let isClickable = false;
+
+            if (levelNumber < userLevel) {
+                nodeClass = 'completed';
+                isClickable = true;
+            } else if (levelNumber === userLevel) {
+                nodeClass = 'active';
+                isClickable = true;
+            }
+
+            const link = isClickable ? `/pages/learning.html?lang=${language}&level=${levelNumber}` : '#';
+            const badgeHTML = level.badge ? `<span class="badge">${level.badge}</span>` : '';
+
+            container.insertAdjacentHTML('beforeend', `
+                <div class="level-item">
+                    <a href="${link}" class="level-node ${nodeClass}">${levelNumber}</a>
+                    <div class="level-content">
+                        <h3>${level.title}</h3>
+                        ${badgeHTML}
+                    </div>
+                </div>
+            `);
+        });
+    }
+</script>
+</body>
+</html>

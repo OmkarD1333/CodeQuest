@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CodeQuest — Interactive lesson with a live code editor. Learn and complete tasks to advance.">
+    <title>Learning - CodeQuest</title>
+
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/material-darker.min.css">
+</head>
+<body>
+<div class="page-header">
+    <a href="#" id="back-to-roadmap" class="btn btn-back">← Back to Roadmap</a>
+    <div class="top-nav-buttons">
+        <button id="logout-btn" class="btn btn-logout">Logout</button>
+    </div>
+</div>
+
+<div class="learning-grid">
+    <div class="left-panel">
+        <div class="editor-container">
+            <label for="code-editor"></label><textarea id="code-editor"></textarea>
+        </div>
+        <div class="controls">
+            <button id="run-btn" class="btn">Run Code</button>
+        </div>
+        <div class="output-container">
+            <h3>Output:</h3>
+            <pre id="output-box"></pre>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <h1 id="lesson-title">Loading Lesson...</h1>
+        <div id="lesson-content"></div>
+        <div class="navigation-buttons">
+            <button id="next-level-btn" class="btn disabled">Complete Task to Proceed</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/rust/rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/sql/sql.min.js"></script>
+
+<script src="../js/utils.js"></script>
+<script src="../js/lessons.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const user = AUTH_GUARD();
+        if (!user) return;
+
+        bindLogoutButton();
+
+        const params = new URLSearchParams(window.location.search);
+        const lang = params.get('lang');
+        const level = parseInt(params.get('level'));
+
+        const lesson = MASTER_CONTENT[lang]?.[level];
+        const nextLevelBtn = document.getElementById('next-level-btn');
+
+        if (!lesson) {
+            document.getElementById('lesson-title').textContent = 'Lesson not found!';
+            return;
+        }
+
+        document.getElementById('lesson-title').textContent = lesson.title;
+        document.getElementById('lesson-content').innerHTML = lesson.content;
+        document.getElementById('back-to-roadmap').href = `/pages/roadmap.html?lang=${lang}`;
+
+        const nextLesson = MASTER_CONTENT[lang]?.[level + 1];
+        if (!nextLesson) {
+            nextLevelBtn.textContent = 'Course Complete!';
+            nextLevelBtn.addEventListener('click', () => {
+                window.location.href = `/pages/roadmap.html?lang=${lang}`;
+            });
+        }
+
+        let editorMode, languageId;
+        if (lang === 'java') {
+            editorMode = 'text/x-java'; languageId = 62;
+        } else if (lang === 'c') {
+            editorMode = 'text/x-csrc'; languageId = 50;
+        } else if (lang === 'python') {
+            editorMode = 'python'; languageId = 71;
+        } else if (lang === 'rust') {
+            editorMode = 'rust'; languageId = 73;
+        } else if (lang === 'mysql') {
+            editorMode = 'text/x-mysql';
+        }
+
+        const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+            lineNumbers: true, mode: editorMode, theme: 'material-darker', indentUnit: 4,
+        });
+        editor.setValue(lesson.starterCode);
+
+        const runBtn = document.getElementById('run-btn');
+        const outputBox = document.getElementById('output-box');
+
+        runBtn.addEventListener('click', async () => {
+            const sourceCode = editor.getValue();
+            outputBox.textContent = '⏳ Running code...';
+            outputBox.style.color = 'var(--text-muted)';
+
+            if (lang === 'mysql') {
+                await runSQLQuery(sourceCode);
+            } else {
+                await runCodeExecution(sourceCode);
+            }
+        });
+
+        function areResultsEqual(actualStr, expectedStr) {
+            try {
+                const actualData = JSON.parse(actualStr);
+                const expectedData = JSON.parse(expectedStr);
+
+                if (!Array.isArray(actualData) || !Array.isArray(expectedData)) {
+                    return actualStr === expectedStr;
+                }
+                if (actualData.length !== expectedData.length) return false;
+                if (actualData.length === 0 && expectedData.length === 0) return true;
+
+                const normalizeObject = (obj) => {
+                    if (obj === null || typeof obj !== 'object') return obj;
+                    return JSON.stringify(
+                        Object.keys(obj).sort().reduce((acc, key) => { acc[key] = obj[key]; return acc; }, {})
+                    );
+                };
+                const getCanonicalString = (arr) => arr.map(normalizeObject).sort().join('');
+                return getCanonicalString(actualData) === getCanonicalString(expectedData);
+            } catch (error) {
+                return actualStr === expectedStr;
+            }
+        }
+
+        async function runSQLQuery(query) {
+            try {
+                const response = await fetch(`${API_BASE}/execute-sql`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source_code: query })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Query failed.');
+
+                const actualOutput = JSON.stringify(result.data);
+                outputBox.textContent = JSON.stringify(result.data, null, 2);
+                outputBox.style.color = 'var(--text-color)';
+
+                if (areResultsEqual(actualOutput, lesson.expected_output)) {
+                    outputBox.textContent += "\n\n✅ Success! Task complete. You can now proceed.";
+                    outputBox.style.color = 'var(--completed-color)';
+                    nextLevelBtn.textContent = 'Continue to Next Level →';
+                    nextLevelBtn.classList.remove('disabled');
+                } else {
+                    outputBox.textContent += `\n\n❌ Almost! The query ran, but the result is not what was expected.`;
+                    outputBox.style.color = 'var(--error-color)';
+                }
+            } catch (error) {
+                outputBox.textContent = `⚠️ SQL Error: ${error.message}`;
+                outputBox.style.color = 'var(--error-color)';
+            }
+        }
+
+        async function runCodeExecution(sourceCode) {
+            try {
+                const response = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        language_id: languageId,
+                        source_code: sourceCode,
+                        expected_output: lesson.expected_output
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Failed to execute code.');
+
+                const actualOutput = (result.stdout || "").trim();
+                const expectedOutput = (lesson.expected_output || "").trim();
+
+                if (result.compile_output) {
+                    outputBox.textContent = result.compile_output;
+                    outputBox.style.color = 'var(--error-color)';
+                } else if (result.stderr) {
+                    outputBox.textContent = result.stderr;
+                    outputBox.style.color = 'var(--error-color)';
+                } else {
+                    outputBox.textContent = result.stdout || "No output.";
+                    outputBox.style.color = 'var(--text-color)';
+
+                    if (actualOutput === expectedOutput) {
+                        outputBox.textContent += "\n\n✅ Success! Task complete. You can now proceed.";
+                        outputBox.style.color = 'var(--completed-color)';
+                        nextLevelBtn.textContent = 'Continue to Next Level →';
+                        nextLevelBtn.classList.remove('disabled');
+                    } else {
+                        outputBox.textContent += `\n\n❌ Almost! Keep trying. Expected output was:\n"${expectedOutput}"`;
+                        outputBox.style.color = 'var(--error-color)';
+                    }
+                }
+            } catch (error) {
+                outputBox.textContent = `⚠️ API Error: ${error.message}`;
+                outputBox.style.color = 'var(--error-color)';
+            }
+        }
+
+        nextLevelBtn.addEventListener('click', async () => {
+            if (nextLevelBtn.classList.contains('disabled')) return;
+
+            nextLevelBtn.classList.add('disabled');
+            nextLevelBtn.textContent = 'Saving progress...';
+
+            try {
+                const apiResponse = await fetch(`${API_BASE}/complete_level`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email: user.email, lang: lang}),
+                });
+                if (!apiResponse.ok) throw new Error('Failed to save progress.');
+
+                if (nextLesson) {
+                    window.location.href = `/pages/learning.html?lang=${lang}&level=${level + 1}`;
+                } else {
+                    window.location.href = `/pages/roadmap.html?lang=${lang}`;
+                }
+            } catch (error) {
+                console.error('Error completing level:', error);
+                nextLevelBtn.textContent = 'Error! Please try again.';
+                nextLevelBtn.classList.remove('disabled');
+            }
+        });
+    });
+</script>
+</body>
+</html>

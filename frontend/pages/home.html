@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CodeQuest — Choose your programming language path and start learning.">
+    <title>Choose Your Path - CodeQuest</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="page-header">
+    <div></div>
+    <div class="top-nav-buttons">
+        <a href="dashboard.html" class="btn btn-dashboard">Dashboard</a>
+        <button id="logout-btn" class="btn btn-logout">Logout</button>
+    </div>
+</div>
+
+<div class="container home-container">
+    <h1>Choose Your Path</h1>
+
+    <div class="practice-container">
+        <a href="practice_selection.html" id="practice-card" class="btn btn-practice">Enter the Practice Arena 💻</a>
+    </div>
+
+    <div class="or-separator">
+        <span class="or-text">OR</span>
+    </div>
+
+    <p>Select a language to begin your adventure.</p>
+
+    <div class="path-selection">
+        <div class="lang-category">
+            <h3>System Level Languages</h3>
+            <div class="lang-category-cards">
+                <div class="lang-card" data-lang="c">
+                    <h2>C ⚙️</h2>
+                    <p>Understand programming fundamentals.</p>
+                </div>
+                <div class="lang-card" data-lang="rust">
+                    <h2>Rust 🦀</h2>
+                    <p>Write safe, concurrent, and practical systems.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="lang-category">
+            <h3>Application Level Languages</h3>
+            <div class="lang-category-cards">
+                <div class="lang-card" data-lang="python">
+                    <h2>Python 🐍</h2>
+                    <p>Master data science and web development.</p>
+                </div>
+                <div class="lang-card" data-lang="java">
+                    <h2>Java ☕</h2>
+                    <p>Build powerful, platform-independent apps.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="lang-category">
+            <h3>Database</h3>
+            <div class="lang-category-cards">
+                <div class="lang-card" data-lang="mysql">
+                    <h2>MySQL 🐬</h2>
+                    <p>Query and manage relational databases.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/utils.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const user = AUTH_GUARD();
+        if (!user) return;
+
+        bindLogoutButton();
+
+        document.querySelectorAll('.lang-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const language = card.getAttribute('data-lang');
+                window.location.assign(`/pages/roadmap.html?lang=${language}`);
+            });
+        });
+
+        document.getElementById('practice-card').addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.assign('/pages/practice_selection.html');
+        });
+    });
+</script>
+</body>
+</html>

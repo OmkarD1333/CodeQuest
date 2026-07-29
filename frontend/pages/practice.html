@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CodeQuest — Practice Arena. Write and run code freely with no restrictions.">
+    <title>Practice Arena - CodeQuest</title>
+
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/material-darker.min.css">
+</head>
+<body>
+<div class="page-header">
+    <a href="practice_selection.html" class="btn btn-back">← Back to Language Selection</a>
+    <div class="top-nav-buttons">
+        <button id="logout-btn" class="btn btn-logout">Logout</button>
+    </div>
+</div>
+
+<div class="learning-grid">
+    <div class="left-panel">
+        <div class="editor-container">
+            <label for="code-editor"></label><textarea id="code-editor"></textarea>
+        </div>
+        <div class="controls">
+            <button id="run-btn" class="btn">Run Code</button>
+        </div>
+        <div class="output-container">
+            <h3>Output:</h3>
+            <pre id="output-box"></pre>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <h1 id="practice-title">Free Practice</h1>
+        <div id="practice-content">
+            <p>Welcome to the Practice Arena! There are no restrictions here.</p>
+            <p>Write any code you want in the editor on the left and click "Run Code" to see the output. This is your space to experiment, practice concepts, or just have fun coding.</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/rust/rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/sql/sql.min.js"></script>
+
+<script src="../js/utils.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const user = AUTH_GUARD();
+        if (!user) return;
+
+        bindLogoutButton();
+
+        const params = new URLSearchParams(window.location.search);
+        const lang = params.get('lang');
+
+        let editorMode, languageId, starterCode;
+        if (lang === 'java') {
+            editorMode = 'text/x-java';
+            languageId = 62;
+            starterCode = 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, Java!");\n    }\n}';
+        } else if (lang === 'c') {
+            editorMode = 'text/x-csrc';
+            languageId = 50;
+            starterCode = '#include <stdio.h>\n\nint main() {\n    printf("Hello, C!");\n    return 0;\n}';
+        } else if (lang === 'python') {
+            editorMode = 'python';
+            languageId = 71;
+            starterCode = '# Welcome to the Python practice arena!\nprint("Hello, Python!")';
+        } else if (lang === 'rust') {
+            editorMode = 'rust';
+            languageId = 73;
+            starterCode = 'fn main() {\n    println!("Hello, Rust!");\n}';
+        } else {
+            document.getElementById('practice-title').textContent = 'Language not supported!';
+            return;
+        }
+
+        const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+            lineNumbers: true,
+            mode: editorMode,
+            theme: 'material-darker',
+            indentUnit: 4,
+        });
+        editor.setValue(starterCode);
+
+        const runBtn = document.getElementById('run-btn');
+        const outputBox = document.getElementById('output-box');
+
+        runBtn.addEventListener('click', async () => {
+            const sourceCode = editor.getValue();
+            outputBox.textContent = '⏳ Running code...';
+            outputBox.style.color = 'var(--text-muted)';
+
+            try {
+                const response = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ language_id: languageId, source_code: sourceCode })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Failed to execute code.');
+
+                if (result.compile_output) {
+                    outputBox.textContent = result.compile_output;
+                    outputBox.style.color = 'var(--error-color)';
+                } else if (result.stderr) {
+                    outputBox.textContent = result.stderr;
+                    outputBox.style.color = 'var(--error-color)';
+                } else {
+                    outputBox.textContent = result.stdout || "No output.";
+                    outputBox.style.color = 'var(--text-color)';
+                }
+            } catch (error) {
+                outputBox.textContent = `⚠️ API Error: ${error.message}`;
+                outputBox.style.color = 'var(--error-color)';
+            }
+        });
+    });
+</script>
+</body>
+</html>

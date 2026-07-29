@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CodeQuest — Your personal dashboard showing progress and badges across all languages.">
+    <title>Dashboard - CodeQuest</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="page-header">
+    <a href="home.html" class="btn btn-back">← Back to Home</a>
+    <div class="top-nav-buttons">
+        <button id="logout-btn" class="btn btn-logout">Logout</button>
+    </div>
+</div>
+
+<div class="container dashboard-container">
+    <div class="profile-header">
+        <div class="avatar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </div>
+        <div>
+            <h1 id="welcome-message">Loading...</h1>
+            <p id="dash-email" class="dashboard-subtitle">...</p>
+        </div>
+    </div>
+
+    <div class="progress-section">
+        <h2>Course Progress</h2>
+        <div id="progress-cards-container"></div>
+    </div>
+</div>
+
+<script src="../js/utils.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const user = AUTH_GUARD();
+        if (!user) return;
+
+        bindLogoutButton();
+
+        document.getElementById('welcome-message').textContent = `Welcome, ${user.username}!`;
+        document.getElementById('dash-email').textContent = user.email;
+
+        try {
+            const response = await fetch(`${API_BASE}/progress?email=${user.email}`);
+            if (!response.ok) throw new Error('Failed to load progress.');
+            const progressData = await response.json();
+            renderProgress(progressData);
+        } catch (error) {
+            console.error('Error fetching progress:', error);
+            document.getElementById('progress-cards-container').innerHTML =
+                `<p class="error-message">Could not load progress data.</p>`;
+        }
+    });
+
+    function renderProgress(data) {
+        const container = document.getElementById('progress-cards-container');
+        container.innerHTML = '';
+
+        const allLangs = ['python', 'c', 'java', 'rust', 'mysql'];
+
+        allLangs.forEach(lang => {
+            const progress = data[lang];
+            let formattedLang = lang.charAt(0).toUpperCase() + lang.slice(1);
+            if (lang === 'mysql') formattedLang = 'MySQL';
+
+            let currentLevel = 1;
+            let badgesHTML = '<p class="no-badges">No badges earned yet.</p>';
+
+            if (progress) {
+                currentLevel = progress.current_level || 1;
+                if (progress.badges && progress.badges.length > 0) {
+                    badgesHTML = '<ul>';
+                    progress.badges.forEach(badge => {
+                        badgesHTML += `<li><span class="badge-icon">🏆</span> ${badge.badge_name}</li>`;
+                    });
+                    badgesHTML += '</ul>';
+                }
+            }
+
+            const totalLevels = 20;
+            const completedLevels = currentLevel - 1;
+            const progressPercentage = (completedLevels / totalLevels) * 100;
+
+            container.insertAdjacentHTML('beforeend', `
+                <div class="progress-card">
+                    <div class="progress-card-header">
+                        <h3>${formattedLang}</h3>
+                        <span>${completedLevels} / ${totalLevels} Levels Complete</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style="width: ${progressPercentage}%;"></div>
+                    </div>
+                    <h4>Badges Earned:</h4>
+                    <div class="badge-list">${badgesHTML}</div>
+                </div>
+            `);
+        });
+    }
+</script>
+</body>
+</html>

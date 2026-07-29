@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CodeQuest — Select a language to enter the free practice coding arena.">
+    <title>Practice Arena - CodeQuest</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="page-header">
+    <a href="home.html" class="btn btn-back">← Back to Home</a>
+    <div class="top-nav-buttons">
+        <button id="logout-btn" class="btn btn-logout">Logout</button>
+    </div>
+</div>
+
+<div class="container home-container">
+    <h1>Practice Arena</h1>
+    <p>Select a language to start coding.</p>
+
+    <div class="path-selection">
+        <div class="lang-category">
+            <h3>Languages</h3>
+            <div class="lang-category-cards">
+                <div class="lang-card" data-lang="python">
+                    <h2>Python 🐍</h2>
+                </div>
+                <div class="lang-card" data-lang="c">
+                    <h2>C ⚙️</h2>
+                </div>
+                <div class="lang-card" data-lang="java">
+                    <h2>Java ☕</h2>
+                </div>
+                <div class="lang-card" data-lang="rust">
+                    <h2>Rust 🦀</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="../js/utils.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const user = AUTH_GUARD();
+        if (!user) return;
+
+        bindLogoutButton();
+
+        document.querySelectorAll('.lang-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const language = card.getAttribute('data-lang');
+                window.location.assign(`/pages/practice.html?lang=${language}`);
+            });
+        });
+    });
+</script>
+</body>
+</html>
