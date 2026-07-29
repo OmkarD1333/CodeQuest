@@ -96,6 +96,4 @@ If you want, I can also:
 - generate a minimal `.env.example` with required keys, or
 - update `requirements.txt` with pinned versions and a `dev-requirements.txt`.
 
----
 
-Updated README — core run and dev instructions are above.
